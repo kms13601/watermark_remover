@@ -8,11 +8,11 @@ python crawling.py
 ```
 ⚠️ 검색어가 한글일 경우 이미지 이름이 한글로 저장되어, 이미지 파일 read가 힘듭니다. 가급적 영어 사용해주세요
 
-![result](/MD/crawling.gif) 
+![crawling](/MD/crawling.gif) 
 
 ##
 
-2️⃣ **이미지에 로고 합성**
+2️⃣ **이미지에 워터마크 합성**
 
 ```
 cd overlay
@@ -72,11 +72,89 @@ python test.py
 ![result](/MD/result.png) 
 ![sal](/MD/sal.png)   
 
-
-이미지1(결과)
-이미지2(sal)
-
 ##
 5️⃣ **참고**
 
-GAN: https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix.git의 코드를 변형하여 사용
+GAN: [pytorch-CycleGAN-and-pix2pix](https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix.git)의 코드를 변형하여 사용
+
+##
+##
+
+0️⃣ **A simple dataset is included. You may skip directly to step 3️⃣if desired.**
+
+##
+
+1️⃣ **Image Crawling**
+```
+python crawling.py
+```
+⚠️ If the search keyword is in Korean, image filenames will also be saved in Korean, which may cause issues when reading the images. Please use English whenever possible.
+
+![crawling](/MD/crawling.gif) 
+
+##
+
+2️⃣ **Watermark Synthesis on Images**
+
+```
+cd overlay
+python overlay.py
+```
+
+1. If you want to train the model from scratch, delete the `data`, `data1`, `data2`, `data3`, and `data4` folders inside the `data` directory.
+2. Then, move the `crawling_data` folder to `./data/` and rename it to `data`.
+3. Move the newly created `data1`~`data4` folders to `./data/`.
+
+
+```
+ㄴdata
+  ㄴdata(crawling_data를 rename한 것)
+  ㄴdata1
+  ㄴdata2
+  ㄴdata3
+  ㄴdata4
+```
+
+This is the required structure.
+
+Lines 21-22 in `overlay.py` are for external validation data. If external validation data is needed, uncomment these lines and run the code. Uncommenting them will create `data5` and `data6` folders.
+
+In this case, follow these steps:
+1. Modify the directory where external validation data is stored in `crawling.py` (line 13).
+2. Update the path to the external validation data in `./overlay/overlay.py` (line 5).
+3. Delete all folders in `./test/`.
+4. If the directory name was set to `external_crawl` in step 1, move the `external_crawl` folder to `./test/` and rename it to `ex_test`.
+5. Move `data5` and `data6` folders to `./test/` and rename them to `ex_test1` and `ex_test2`, respectively.
+
+
+##
+
+3️⃣ **Model Training**
+
+
+The following versions were used: 
+```
+python = 3.9.19
+keras = 2.14.0
+numPy = 1.26.4
+```
+
+```
+python CNN.py
+python GAN.py
+
+--- The following steps are optional ---
+python saliency_map.py
+python test.py
+```
+
+## 
+4️⃣ **Results**
+
+![result](/MD/result.png) 
+![sal](/MD/sal.png)   
+
+##
+5️⃣ **References**
+
+GAN: This project uses a modified version of the code from [pytorch-CycleGAN-and-pix2pix](https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix.git).
