@@ -18,6 +18,6 @@ for img in img_paths :
     logo_crop(img, '4')
 
     # for ex_data
-    add_logo_randomly(img, '5')
-    logo_crop(img, '6')
+    # add_logo_randomly(img, '5')
+    # logo_crop(img, '6')
     i+=1
