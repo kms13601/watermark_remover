@@ -9,8 +9,8 @@ import urllib.request
 
 chrome_options = webdriver.ChromeOptions()
 
-def create_save_directory(query):
-    save_dir = f"./crawling_data/{query}"
+def create_save_directory():
+    save_dir = f"./crawling_data/"
     os.makedirs(save_dir, exist_ok=True)
     return save_dir
 
@@ -103,7 +103,7 @@ if __name__ == "__main__":
     image_count = int(input("다운로드할 이미지 개수를 입력하세요: ").strip())
 
     # 저장 디렉토리 생성
-    save_dir = create_save_directory(query)
+    save_dir = create_save_directory()
 
     # 이미지 URL 수집
     urls = image_urls(query, image_count)
