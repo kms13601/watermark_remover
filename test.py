@@ -19,3 +19,16 @@ discriminator = tf.keras.models.load_model(f'./model_save/GAN/disc_full.h5')
 cal_metrics(generator, discriminator, X_ex_test, y_ex_test)
 model_name = 'GAN'
 save_img(generator, model_name, X_ex_test, y_ex_test, './test/pred/')
+
+num = 5
+
+for num in range(num):
+    sal_list = []
+    sal1 = make_sal(X_test[num],  CNN1_model)
+    sal2 = make_sal(X_test[num],  CNN2_model)
+    sal3 = make_sal(X_test[num],  CNN3_model)
+    sal4 = make_sal(X_test[num],  generator)
+
+    sal_list = [sal1, sal2, sal3, sal4]
+
+    save_sal(X_test[num], sal_list, num, './test/sal/')
