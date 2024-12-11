@@ -1,0 +1,39 @@
+import os
+import glob
+import cv2
+import numpy as np
+from sklearn.model_selection import train_test_split
+from GAN_utils import *
+from GAN_model import *
+from CNN_utils import *
+
+data_dir = './data'
+water_images, non_water_images = make_data(data_dir)
+
+X_train, test_water, y_train, test_non_water = train_test_split(
+    water_images, non_water_images, test_size=0.4, random_state=42)
+
+X_val, X_test, y_val, y_test = train_test_split(
+    test_water, test_non_water, test_size=0.5, random_state=42)
+
+X_train = np.concatenate((X_train, X_val), axis=0)
+y_train = np.concatenate((y_train, y_val), axis=0)
+
+epochs = 100
+batch_size = 32
+
+dataset = list(zip(X_train, y_train))
+
+generator, discriminator = train(dataset, epochs, batch_size)
+
+generator.save_weights('./model_save/GAN/gen_weights.h5')
+generator.save('./model_save/GAN/gen_full.h5')
+discriminator.save_weights('./model_save/GAN/disc_weights.h5')
+discriminator.save('./model_save/GAN/disc_full.h5')
+
+#generator = tf.keras.models.load_model(f'./model_save/GAN/gen_full.h5')
+#discriminator = tf.keras.models.load_model(f'./model_save/GAN/disc_full.h5')
+
+cal_metrics(generator, discriminator, X_test, y_test)
+model_name = 'GAN'
+save_img(generator, model_name, X_test, y_test)
