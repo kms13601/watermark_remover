@@ -52,8 +52,8 @@ def make_data(data_dir):
 def make_ex_data(data_dir):
     water_paths, non_water_paths, X, y = [], [], [], []
 
-    for i in range(1, 2):  
-        folder_path = os.path.join(data_dir, f'data{i}')
+    for i in range(1, 3):  
+        folder_path = os.path.join(data_dir, f'ex_test{i}')
         water_paths.extend(glob.glob(os.path.join(folder_path, '*.png')))
 
     for water_path in water_paths:
@@ -61,7 +61,7 @@ def make_ex_data(data_dir):
         img_found = False
 
         for ext in ['png', 'jpg', 'jpeg']:
-            non_water_path = os.path.join(data_dir, 'data', f'{img_name}.{ext}')
+            non_water_path = os.path.join(data_dir, 'ex_test', f'{img_name}.{ext}')
             if os.path.exists(non_water_path):
                 non_water_paths.append(non_water_path)
                 img_found = True
