@@ -149,11 +149,11 @@ def train_and_evaluate_model(model, model_name, X_train, y_train, X_val, y_val, 
 
     save_img(model, model_name, X_test, y_test)
 
-def save_csv(model_name, test_loss, test_psnr, test_ssim):
+def save_csv(model_name, test_loss, test_psnr, test_ssim, csv_name='./result.csv'):
     header = ['model_name', 'test_loss', 'test_psnr', 'test_ssim']
     new_row = [model_name, test_loss, test_psnr, test_ssim]  
 
-    df = pd.read_csv('result.csv', header=None, names=header)
+    df = pd.read_csv(csv_name, header=None, names=header)
 
     if model_name in df['model_name'].values:
         df.loc[df['model_name'] == model_name, ['test_loss', 'test_psnr', 'test_ssim']] = new_row[1:]
@@ -162,7 +162,7 @@ def save_csv(model_name, test_loss, test_psnr, test_ssim):
 
     df.to_csv('result.csv', index=False, header=False)
 
-def save_img(model, model_name, X_test, y_test):
+def save_img(model, model_name, X_test, y_test, save_path='./pred'):
     os.makedirs(f"./pred/{model_name}", exist_ok=True)
     for i in range(len(X_test)):
         preds = model.predict(tf.expand_dims(X_test[i], axis=0))  
@@ -187,5 +187,27 @@ def save_img(model, model_name, X_test, y_test):
         plt.title('Pred') 
 
         plt.tight_layout()
-        os.makedirs('./pred/{model_name}', exist_ok=True)
-        plt.savefig(f"./pred/{model_name}/{i}.png")  
+
+        if save_path == './pred' :
+            os.makedirs('./pred/{model_name}', exist_ok=True)
+            plt.savefig(f"./pred/{model_name}/{i}.png")   
+        else :
+            os.makedirs('./test/pred/{model_name}', exist_ok=True)
+            plt.savefig(f"./test/pred/{model_name}/{i}.png") 
+
+def evaluate_model(model, model_name, X_test, y_test):
+    model = load_model(f'./model_save/{model_name}', custom_objects={'psnr': psnr, 'ssim': ssim, 'combined_loss': combined_loss})
+    test_loss, test_psnr, test_ssim = model.evaluate(X_test, y_test)
+
+    test_loss = round(test_loss, 3)
+    test_psnr = round(test_psnr, 3)
+    test_ssim = round(test_ssim, 3)
+
+    save_csv(model_name, test_loss, test_psnr, test_ssim, './test/ex_result.csv')
+
+    print(f"\nTest {model_name} Results:")
+    print(f"Test Loss(MSE + Perceptual Loss): {round(test_loss, 3)}")
+    print(f"PSNR: {round(test_psnr, 3)}")
+    print(f"SSIM: {round(test_ssim, 3)}")
+
+    save_img(model, model_name, X_test, y_test, './test/')
