@@ -19,9 +19,9 @@ cd overlay
 python overlay.py
 ```
 
-1. 모델을 처음부터 훈련시키려면 data 폴더 내부의 data, data1, data2, data3, data4 폴더를 모두 삭제하세요
-2. 그리고 crawling_data 폴더를 ./data/로 옮긴 후, data로 이름을 변경하세요
-3. 생성된 data1~data4 폴더를 ./data/로 옮기세요
+1. 모델을 처음부터 훈련시키려면 `data` 폴더 내부의 `data, data1, data2, data3, data4` 폴더를 모두 삭제하세요
+2. 그리고 `crawling_data` 폴더를 `./data/`로 옮긴 후, data로 이름을 변경하세요
+3. 생성된 `data1~data4` 폴더를 `./data/`로 옮기세요
 
 ```
 ㄴdata
@@ -34,14 +34,14 @@ python overlay.py
 
 이렇게 만들면 됩니다.
 
-overlay.py의 line 21-22는 외부 검증 데이터를 위한 코드입니다. 외부 검증 데이터가 필요하다면 각주를 해제하고 코드를 실행하세요. 각주를 해제한다면 data5와 data6 이라는 폴더가 생성됩다
+`overlay.py`의 line 21-22는 외부 검증 데이터를 위한 코드입니다. 외부 검증 데이터가 필요하다면 각주를 해제하고 코드를 실행하세요. 각주를 해제한다면 data5와 data6 이라는 폴더가 생성됩니다
 
 이때 다음과 같은 과정이 필요합니다
-1. crawling.py에서 외부 검증 데이터가 저장되는 디렉토리를 변경해주기(line 13)
-2. ./overlay/overlay.py 에서 외부 검증 데이터가 저장된 path로 변경해주기(line 5)
-3. ./test/ 에 있는 모든 폴더 삭제하기
-4. 1에서 디렉토리 이름을 external_crawl 로 설정했다면, external_crawl 폴더를 ./test/로 옮긴 후, ex_test로 폴더명 변경
-5. data5, data6 폴더를 ./test/로 옮긴 후, ex_test1, ex_test2로 이름 변경해주기
+1. `crawling.py`에서 외부 검증 데이터가 저장되는 디렉토리를 변경해주기(line 13)
+2. `./overlay/overlay.py` 에서 외부 검증 데이터가 저장된 path로 변경해주기(line 5)
+3. `./test/` 에 있는 모든 폴더 삭제하기
+4. 1에서 디렉토리 이름을 `external_crawl` 로 설정했다면, `external_crawl` 폴더를 `./test/`로 옮긴 후, `ex_test`로 폴더명 변경
+5. `data5, data6` 폴더를 `./test/`로 옮긴 후, `ex_test1, ex_test2`로 이름 변경해주기
 
 ##
 
