@@ -10,7 +10,7 @@ import urllib.request
 chrome_options = webdriver.ChromeOptions()
 
 def create_save_directory(query):
-    save_dir = f"./data/{query}"
+    save_dir = f"./crawling_data/{query}"
     os.makedirs(save_dir, exist_ok=True)
     return save_dir
 
