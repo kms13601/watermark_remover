@@ -1,0 +1,204 @@
+import tensorflow as tf
+import numpy as np
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras import applications
+from tensorflow.keras.callbacks import ReduceLROnPlateau, EarlyStopping
+from GAN_model import *
+from utils import save_csv, psnr, ssim
+
+vgg_model = applications.VGG16(weights='imagenet', include_top=False, input_shape=(256, 256, 3))
+
+def perceptual_loss_function(y_true, y_pred, vgg_model):
+    true_features = vgg_model(y_true)
+    pred_features = vgg_model(y_pred)
+    return tf.reduce_mean(tf.square(true_features - pred_features))
+
+# Generator Loss (MSE + Perceptual Loss)
+def generator_loss(disc_fake_output, y_true, y_pred, vgg_model, alpha=0.5, beta=0.5):
+    mse_loss = tf.reduce_mean(tf.square(y_true - y_pred))
+    perceptual_loss = perceptual_loss_function(y_true, y_pred, vgg_model)
+    
+    return alpha * mse_loss + beta * perceptual_loss - 0.001 * tf.reduce_mean(disc_fake_output)
+
+def discriminator_loss(disc_real_output, disc_fake_output):
+    return tf.reduce_mean(disc_fake_output) - tf.reduce_mean(disc_real_output)
+
+def gradient_penalty(real_data, generated_data, discriminator, gp_weight):
+    batch_size = tf.shape(real_data)[0]
+
+    # Calculate interpolation
+    alpha = tf.random.normal([batch_size, 1, 1, 1])
+    alpha = tf.broadcast_to(alpha, tf.shape(real_data))  # Expand alpha to match real_data's shape
+
+    # Interpolated images
+    interpolated = alpha * real_data + (1 - alpha) * generated_data
+    
+    # Track gradients of the interpolated images
+    with tf.GradientTape() as tape:
+        tape.watch(interpolated)
+        prob_interpolated = discriminator(interpolated, training=True)  # Ensure discriminator is used in training mode
+
+    # Calculate gradients
+    gradients = tape.gradient(prob_interpolated, interpolated)
+
+    # Flatten gradients to calculate norm
+    gradients = tf.reshape(gradients, [batch_size, -1])
+    
+    # Gradient norm
+    gradient_norm = tf.sqrt(tf.reduce_sum(tf.square(gradients), axis=1) + 1e-12)
+    
+    # Compute the gradient penalty
+    gp = gp_weight * tf.reduce_mean(tf.square(gradient_norm - 1))
+
+    return gp
+
+generator_optimizer = Adam(learning_rate=2e-4, beta_1=0.5)
+discriminator_optimizer = Adam(learning_rate=2e-4, beta_1=0.5)
+
+@tf.function
+def train_step(real_images, target_images, generator, discriminator, lambda_gp=10.0):
+    with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
+        # Generator가 이미지를 생성
+        generated_images = generator(real_images, training=True)
+
+        # Discriminator가 진짜와 가짜를 구별
+        real_output = discriminator(target_images, training=True)
+        fake_output = discriminator(generated_images, training=True)
+
+        # 손실 계산
+        gen_loss = generator_loss(fake_output, target_images, generated_images, vgg_model)  # Generator 손실
+        disc_loss = discriminator_loss(real_output, fake_output)  # Discriminator 손실
+
+        # Gradient Penalty 계산
+        gp = gradient_penalty(target_images, generated_images, discriminator, lambda_gp)  # 올바른 gp_weight 전달
+        disc_loss += gp  # Gradient Penalty를 Discriminator 손실에 추가
+
+    # Gradient 계산
+    gen_gradients = gen_tape.gradient(gen_loss, generator.trainable_variables)
+    disc_gradients = disc_tape.gradient(disc_loss, discriminator.trainable_variables)
+
+    # Gradient 적용
+    generator_optimizer.apply_gradients(zip(gen_gradients, generator.trainable_variables))
+    discriminator_optimizer.apply_gradients(zip(disc_gradients, discriminator.trainable_variables))
+
+    return gen_loss, disc_loss, gp
+
+def train(dataset, epochs, batch_size):
+    generator = build_generator()
+    discriminator = build_discriminator()
+
+    # 초기 학습률 설정
+    initial_lr = 2e-4
+    lr_decay_factor = 0.5
+    patience = 3
+    min_lr = 1e-6
+    no_improve_epochs = 0
+    best_loss = float('inf')
+
+    for epoch in range(epochs):
+        print(f'Starting epoch {epoch+1}/{epochs}')
+
+        epoch_gen_loss = 0
+        epoch_disc_loss = 0
+        epoch_gp = 0
+        batch_count = 0
+
+        for batch_i in range(0, len(dataset), batch_size):
+            batch = dataset[batch_i:batch_i + batch_size]
+            
+            real_images = np.array([img for img, _ in batch])
+            target_images = np.array([target for _, target in batch])
+
+            real_images = real_images.astype('float32')
+            target_images = target_images.astype('float32')
+
+            gen_loss, disc_loss, gp = train_step(real_images, target_images, generator, discriminator)
+            
+            epoch_gen_loss += gen_loss
+            epoch_disc_loss += disc_loss
+            epoch_gp += gp
+            batch_count += 1
+
+            if batch_i % 100 == 0:
+                print(f'Epoch {epoch+1}, Batch {batch_i}, Generator Loss: {gen_loss.numpy():.4f}, Discriminator Loss: {disc_loss.numpy():.4f}, GP: {gp.numpy():.4f}')
+
+        # 에포크 평균 손실 계산
+        epoch_gen_loss /= batch_count
+        epoch_disc_loss /= batch_count
+        epoch_gp /= batch_count
+
+        print(f'Epoch {epoch+1}, Avg Generator Loss: {epoch_gen_loss.numpy():.4f}, Avg Discriminator Loss: {epoch_disc_loss.numpy():.4f}, Avg GP: {epoch_gp.numpy():.4f}')
+
+        # 학습률 조정
+        if epoch_gen_loss < best_loss:
+            best_loss = epoch_gen_loss
+            no_improve_epochs = 0
+        else:
+            no_improve_epochs += 1
+
+        if no_improve_epochs >= patience:
+            current_lr = generator_optimizer.learning_rate.numpy()
+            if current_lr > min_lr:
+                new_lr = max(current_lr * lr_decay_factor, min_lr)
+                generator_optimizer.learning_rate.assign(new_lr)
+                discriminator_optimizer.learning_rate.assign(new_lr)
+                print(f'Learning rate reduced to {new_lr:.1e}')
+                no_improve_epochs = 0
+
+        # Early stopping
+        if no_improve_epochs >= 15:
+            print(f"Early stopping at epoch {epoch+1}")
+            break
+    return generator, discriminator
+
+def load_generator(filepath='./model_save/GAN'):
+    try:
+        loaded_model = tf.keras.models.load_model(f'{filepath}/full.h5')
+        print(f'Loaded full generator model from {filepath}/full.h5')
+        return loaded_model
+    
+    except Exception as e:
+        print(f'Failed to load full model: {e}')
+        print('Attempting to load weights...')
+        
+        try:
+            loaded_model = build_generator()  
+            loaded_model.load_weights(f'{filepath}/weights.h5')
+            print(f'Loaded generator weights from {filepath}/weights.h5')
+            return loaded_model
+        
+        except Exception as e:
+            print(f'Failed to load generator: {e}')
+            return None
+        
+def cal_metrics(generator, discriminator, X_test, y_test, model_name='GAN'):
+    X_test = tf.cast(X_test, tf.float32)
+    y_test = tf.cast(y_test, tf.float32)
+
+    y_pred = generator.predict(X_test)
+
+    # Discriminator로 Fake Output 생성
+    # disc_fake_output = discriminator(y_pred, training=False)
+    # disc_fake_output = tf.cast(disc_fake_output, tf.float32)  # 데이터 타입 변환
+
+    # # 손실 계산
+    # test_loss = generator_loss(disc_fake_output, y_test, y_pred, vgg_model)
+
+    # PSNR 및 SSIM 계산
+    test_psnr = tf.reduce_mean(psnr(y_test, y_pred))
+    test_ssim = tf.reduce_mean(ssim(y_test, y_pred))
+
+    # 소수점 3자리 반올림
+    test_loss= 0
+    # test_loss = round(test_loss.numpy(), 3)
+    test_psnr = round(test_psnr.numpy(), 3)
+    test_ssim = round(test_ssim.numpy(), 3)
+
+    test_loss = round(test_loss, 3)
+    test_psnr = round(test_psnr, 3)
+    test_ssim = round(test_ssim, 3)
+
+    print(test_loss, test_psnr, test_ssim)
+
+    # 결과 저장
+    save_csv(model_name, test_loss, test_psnr, test_ssim)
