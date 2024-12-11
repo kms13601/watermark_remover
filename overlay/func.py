@@ -51,8 +51,8 @@ def add_logo_randomly(img_path, logo_name):
 
     img[y:y+new_logo_height, x:x+new_logo_width] = roi
 
-    os.makedirs(f'../data{logo_name}', exist_ok=True)
-    result_path = f"../data{logo_name}/{file_name}.png"
+    os.makedirs(f'./data{logo_name}', exist_ok=True)
+    result_path = f"./data{logo_name}/{file_name}.png"
     cv2.imwrite(result_path, img)
     #print(f"결과가 {result_path}에 저장되었습니다.")
     return result_path
@@ -116,8 +116,8 @@ def logo_crop(img_path, logo_name):
     for c in range(3):
         roi[:, :, c] = (logo_bgr[:, :, c] * logo_alpha + roi[:, :, c] * inv_alpha).astype(np.uint8)
 
-    os.makedirs(f'../data{logo_name}', exist_ok=True)
-    result_path = f"../data{logo_name}/{file_name}.png"
+    os.makedirs(f'./data{logo_name}', exist_ok=True)
+    result_path = f"./data{logo_name}/{file_name}.png"
     cv2.imwrite(result_path, img)
     #print(f"결과가 {result_path}에 저장되었습니다.")
     return result_path
