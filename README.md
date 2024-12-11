@@ -19,11 +19,9 @@ cd overlay
 python overlay.py
 ```
 
-모델을 처음부터 훈련시키려면 data 폴더 내부의 data, data1, data2, data3, data4 폴더를 모두 삭제하세요
-
-그리고 crawling_data 폴더를 ./data/로 옮긴 후, data로 이름을 변경하세요
-
-생성된 data1~data4 폴더를 ./data/로 옮기세요
+1. 모델을 처음부터 훈련시키려면 data 폴더 내부의 data, data1, data2, data3, data4 폴더를 모두 삭제하세요
+2. 그리고 crawling_data 폴더를 ./data/로 옮긴 후, data로 이름을 변경하세요
+3. 생성된 data1~data4 폴더를 ./data/로 옮기세요
 
 ```
 ㄴdata
@@ -70,6 +68,7 @@ python test.py
 4️⃣ **결과**
 
 ![result](/MD/result.png) 
+
 ![sal](/MD/sal.png)   
 
 ##
