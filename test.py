@@ -2,7 +2,7 @@ from CNN_utils import *
 from model import *
 
 data_dir = './test/ex_test'
-X_ex_test, y_ex_test = make_data(data_dir)
+X_ex_test, y_ex_test = make_ex_data(data_dir)
 
 model_dict = {
     'CNN1': CNN1(),
