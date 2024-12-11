@@ -18,4 +18,4 @@ discriminator = tf.keras.models.load_model(f'./model_save/GAN/disc_full.h5')
 
 cal_metrics(generator, discriminator, X_ex_test, y_ex_test)
 model_name = 'GAN'
-save_img(generator, model_name, X_ex_test, y_ex_test)
+save_img(generator, model_name, X_ex_test, y_ex_test, './test/pred/')
