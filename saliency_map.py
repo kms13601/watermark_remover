@@ -1,3 +1,16 @@
+from utils import *
+from model import *
+from sklearn.model_selection import train_test_split
+
+data_dir = './data'
+X, y = make_data(data_dir)
+
+X_train, test_water, y_train, test_non_water = train_test_split(
+    X, y, test_size=0.4, random_state=42)
+
+X_val, X_test, y_val, y_test = train_test_split(
+    test_water, test_non_water, test_size=0.5, random_state=42)
+
 CNN1_model = load_model(f'./model_save/CNN1', custom_objects={'psnr': psnr, 'ssim': ssim, 'combined_loss': combined_loss})
 CNN2_model = load_model(f'./model_save/CNN2', custom_objects={'psnr': psnr, 'ssim': ssim, 'combined_loss': combined_loss})
 CNN3_model = load_model(f'./model_save/CNN3', custom_objects={'psnr': psnr, 'ssim': ssim, 'combined_loss': combined_loss})
