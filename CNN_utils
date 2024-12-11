@@ -1,0 +1,152 @@
+import os
+import glob
+import cv2
+import numpy as np
+import tensorflow as tf
+from tensorflow.keras import optimizers
+from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
+import pandas as pd
+from tensorflow.keras import applications
+import matplotlib.pyplot as plt
+os.makedirs('model_save', exist_ok=True)
+
+def make_data(data_dir):
+    water_paths, non_water_paths, X, y = [], [], [], []
+
+    for i in range(1, 5):  
+        folder_path = os.path.join(data_dir, f'data{i}')
+        water_paths.extend(glob.glob(os.path.join(folder_path, '*.png')))
+
+    for water_path in water_paths:
+        img_name = os.path.splitext(os.path.basename(water_path))[0] 
+        img_found = False
+
+        for ext in ['png', 'jpg', 'jpeg']:
+            non_water_path = os.path.join(data_dir, 'data', f'{img_name}.{ext}')
+            if os.path.exists(non_water_path):
+                non_water_paths.append(non_water_path)
+                img_found = True
+                break
+
+        if not img_found:
+            print(f'No matching non-watermark image for {water_path}')
+
+    for water, non_water in zip(water_paths, non_water_paths):
+        water_img = cv2.imread(water, cv2.IMREAD_COLOR)
+        non_water_img = cv2.imread(non_water, cv2.IMREAD_COLOR)
+
+        water_img = cv2.cvtColor(water_img, cv2.COLOR_BGR2RGB)
+        non_water_img = cv2.cvtColor(non_water_img, cv2.COLOR_BGR2RGB)
+
+        water_img = cv2.resize(water_img, (256, 256))
+        non_water_img = cv2.resize(non_water_img, (256, 256))
+
+        X.append(water_img)
+        y.append(non_water_img)
+
+    X = np.array(X)/255.0
+    y = np.array(y)/255.0
+
+    return X, y
+
+vgg16_model = applications.VGG16(weights='imagenet', include_top=False, input_shape=(256, 256, 3))
+
+@tf.function
+def perceptual_loss_function(y_true, y_pred):
+    vgg_model = vgg16_model
+
+    true_features = vgg_model(y_true)
+    pred_features = vgg_model(y_pred)
+
+    loss = tf.reduce_mean(tf.square(true_features - pred_features))
+
+    return loss
+
+def psnr(y_true, y_pred):
+    return tf.image.psnr(y_true, y_pred, max_val=1.0)
+
+def ssim(y_true, y_pred):
+    return tf.image.ssim(y_true, y_pred, max_val=1.0)
+
+def combined_loss(y_true, y_pred, alpha=0.5, beta=0.5):
+    mse_loss = tf.reduce_mean(tf.square(y_true - y_pred))
+    perceptual_loss = perceptual_loss_function(y_true, y_pred)
+
+    total_loss = alpha * mse_loss + beta * perceptual_loss
+
+    return total_loss
+
+def train_and_evaluate_model(model, model_name, X_train, y_train, X_val, y_val, X_test, y_test):
+    model.compile(
+        optimizer=optimizers.Adam(learning_rate=0.001),
+        loss=combined_loss,
+        metrics=[psnr, ssim]
+    )
+
+    callbacks = [
+        ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=3, verbose=1),
+        EarlyStopping(monitor='val_loss', patience=15, verbose=1, restore_best_weights=True)
+    ]
+
+    # model.build(input_shape=(None, 256, 256, 3)) 
+    # model.summary()
+
+    model.fit(X_train, y_train, validation_data=(X_val, y_val), epochs=100, callbacks=callbacks)
+    
+    model.save(f'./model_save/{model_name}', save_format='tf')
+    #model = load_model(f'./model_save/{model_name}', custom_objects={'psnr': psnr, 'ssim': ssim, 'combined_loss': combined_loss})
+    test_loss, test_psnr, test_ssim = model.evaluate(X_test, y_test)
+
+    test_loss = round(test_loss, 3)
+    test_psnr = round(test_psnr, 3)
+    test_ssim = round(test_ssim, 3)
+
+    save_csv(model_name, test_loss, test_psnr, test_ssim)
+
+    print(f"\nTest {model_name} Results:")
+    print(f"Test Loss(MSE + Perceptual Loss): {round(test_loss, 3)}")
+    print(f"PSNR: {round(test_psnr, 3)}")
+    print(f"SSIM: {round(test_ssim, 3)}")
+
+    save_img(model, model_name, X_test, y_test)
+
+def save_csv(model_name, test_loss, test_psnr, test_ssim):
+    header = ['model_name', 'test_loss', 'test_psnr', 'test_ssim']
+    new_row = [model_name, test_loss, test_psnr, test_ssim]  
+
+    df = pd.read_csv('result.csv', header=None, names=header)
+
+    if model_name in df['model_name'].values:
+        df.loc[df['model_name'] == model_name, ['test_loss', 'test_psnr', 'test_ssim']] = new_row[1:]
+    #else:
+     #   df = df.append(pd.DataFrame([new_row], columns=header), ignore_index=True)
+
+    df.to_csv('result.csv', index=False, header=False)
+
+def save_img(model, model_name, X_test, y_test):
+    os.makedirs(f"./pred/{model_name}", exist_ok=True)
+    for i in range(len(X_test)):
+        preds = model.predict(tf.expand_dims(X_test[i], axis=0))  
+        #preds = model.predict(X_test[i])
+
+        plt.figure(figsize=(12, 6))   
+        plt.subplot(1, 3, 1)          
+        
+        plt.imshow(X_test[i])
+        plt.axis('off')
+        plt.title('Original Image')
+
+        plt.subplot(1, 3, 2)
+        plt.imshow(y_test[i], cmap='jet') 
+        plt.axis('off')
+        plt.title('GT')
+
+        plt.subplot(1, 3, 3)
+        #plt.imshow(preds)
+        plt.imshow(preds[0])
+        plt.axis('off')
+        plt.title('Pred') 
+
+        plt.tight_layout()
+        os.makedirs('./pred/{model_name}', exist_ok=True)
+        plt.savefig(f"./pred/{model_name}/{i}.png")  
