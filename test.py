@@ -1,4 +1,4 @@
-from utils import *
+from CNN_utils import *
 from model import *
 
 data_dir = './test/ex_test'
