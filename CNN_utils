@@ -235,6 +235,38 @@ def make_sal(img, model):
 
     return normalized_tensor
 
+def cal_metrics(generator, discriminator, X_test, y_test, model_name='GAN'):
+    X_test = tf.cast(X_test, tf.float32)
+    y_test = tf.cast(y_test, tf.float32)
+
+    y_pred = generator.predict(X_test)
+
+    # Discriminator로 Fake Output 생성
+    # disc_fake_output = discriminator(y_pred, training=False)
+    # disc_fake_output = tf.cast(disc_fake_output, tf.float32)  # 데이터 타입 변환
+
+    # # 손실 계산
+    # test_loss = generator_loss(disc_fake_output, y_test, y_pred, vgg_model)
+
+    # PSNR 및 SSIM 계산
+    test_psnr = tf.reduce_mean(psnr(y_test, y_pred))
+    test_ssim = tf.reduce_mean(ssim(y_test, y_pred))
+
+    # 소수점 3자리 반올림
+    test_loss= 0
+    # test_loss = round(test_loss.numpy(), 3)
+    test_psnr = round(test_psnr.numpy(), 3)
+    test_ssim = round(test_ssim.numpy(), 3)
+
+    test_loss = round(test_loss, 3)
+    test_psnr = round(test_psnr, 3)
+    test_ssim = round(test_ssim, 3)
+
+    print(test_loss, test_psnr, test_ssim)
+
+    # 결과 저장
+    save_csv(model_name, test_loss, test_psnr, test_ssim, './test/ex_result.csv')
+
 def save_sal(img, saliency_maps, num, save_path = './sal'):
     plt.figure(figsize=(10, 10))
 
