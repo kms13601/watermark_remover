@@ -1,4 +1,4 @@
-from utils import *
+from CNN_utils import *
 from model import *
 from sklearn.model_selection import train_test_split
 
